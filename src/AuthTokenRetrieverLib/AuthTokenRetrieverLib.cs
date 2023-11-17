@@ -81,20 +81,7 @@ namespace Reddit.AuthTokenRetriever
 
         public event EventHandler<AuthSuccessEventArgs> AuthSuccess;
 
-        [Obsolete("This ctor is for BC compatibility with apps built on pre-5.0.1 only.  Please specify a port as the second argument to use the new ctor.")]
-        /// <summary>
-        /// Create a new instance of the Reddit.NET OAuth Token Retriever library.
-        /// </summary>
-        /// <param name="appId">Your Reddit App ID</param>
-        /// <param name="appSecret">Your Reddit App Secret (leave empty for installed apps)</param>
-        /// <param name="port">The port to listen on for the callback (default: 8080)</param>
-        public AuthTokenRetrieverLib(string appId, string appSecret = null, int port = 8080)
-        {
-            AppId = appId;
-            AppSecret = appSecret;
-            Port = port;
-            Host = "localhost";
-        }
+        public event EventHandler<ExceptionEventArgs> OnException;
 
         /// <summary>
         /// Create a new instance of the Reddit.NET OAuth Token Retriever library.
@@ -113,30 +100,33 @@ namespace Reddit.AuthTokenRetriever
             RedirectURI = redirectUri ?? "http://" + Host + ":" + Port.ToString() + "/Reddit.NET/oauthRedirect";
         }
 
-        public void AwaitCallback(bool generateLocalOutput = false)
+        public void AwaitCallback(bool generateLocalOutput = false, bool showGenericMessage = false)
         {
-            using (HttpServer = new HttpServer(new HttpRequestProvider()))
-            {
-                HttpServer.Use(new TcpListenerAdapter(new TcpListener(IPAddress.Parse(Host.Equals("localhost")
+            HttpServer?.Dispose();
+            HttpServer = new HttpServer(new HttpRequestProvider());
+            HttpServer.Use(new TcpListenerAdapter(new TcpListener(IPAddress.Parse(Host.Equals("localhost")
                     ? IPAddress.Loopback.ToString() : Host), Port)));
-                
-                HttpServer.Use((context, next) =>
-                {
-                    string code = null;
-                    string state = null;
-                    try
-                    {
-                        code = context.Request.QueryString.GetByName("code");
-                        state = context.Request.QueryString.GetByName("state");  // This app formats state as:  AppId + ":" [+ AppSecret]
-                    }
-                    catch (KeyNotFoundException)
-                    {
-                        context.Response = new uhttpsharp.HttpResponse(HttpResponseCode.Ok, Encoding.UTF8.GetBytes("<b>ERROR:  No code and/or state received!</b>"), false);
-                        throw new Exception("ERROR:  Request received without code and/or state!");
-                    }
 
-                    if (!string.IsNullOrWhiteSpace(code)
-                        && !string.IsNullOrWhiteSpace(state))
+            HttpServer.Use((context, next) =>
+            {
+                string code = null;
+                string state = null;
+                try
+                {
+                    code = context.Request.QueryString.GetByName("code");
+                    state = context.Request.QueryString.GetByName("state");  // This app formats state as:  AppId + ":" [+ AppSecret]
+                }
+                catch (KeyNotFoundException e)
+                {
+                    context.Response = new uhttpsharp.HttpResponse(HttpResponseCode.Ok, Encoding.UTF8.GetBytes("<b>ERROR:  No code and/or state received!</b>"), false);
+                    var errorMessage = "ERROR:  Request received without code and/or state!";
+                    OnException?.Invoke(this, new ExceptionEventArgs { Exception = e, Message = errorMessage });
+                    throw new Exception(errorMessage);
+                }
+
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(state))
                     {
                         // Send request with code and JSON-decode the return for token retrieval.  --Kris
                         RestRequest restRequest = new RestRequest("/api/v1/access_token", Method.POST);
@@ -162,64 +152,82 @@ namespace Reddit.AuthTokenRetriever
                         string[] sArr = state.Split(':');
                         if (sArr == null || sArr.Length == 0)
                         {
-                            throw new Exception("State must consist of 'appId:appSecret'!");
+                            var errorMessage = "State must consist of 'appId:appSecret'!";
+                            var exception = new Exception("State must consist of 'appId:appSecret'!");
+                            OnException?.Invoke(this, new ExceptionEventArgs { Exception = exception, Message = errorMessage });
+                            throw exception;
                         }
 
                         string appId = sArr[0];
                         string appSecret = (sArr.Length >= 2 ? sArr[1] : null);
 
                         string html;
-                        using (Stream stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("AuthTokenRetrieverLib.Templates.Success.html"))
-                        {
-                            using (StreamReader streamReader = new StreamReader(stream))
-                            {
-                                html = streamReader.ReadToEnd();
-                            }
-                        }
 
-                        html = html.Replace("REDDIT_OAUTH_ACCESS_TOKEN", oAuthToken.AccessToken);
-                        html = html.Replace("REDDIT_OAUTH_REFRESH_TOKEN", oAuthToken.RefreshToken);
-
-                        // If enabled, output the token to a JSON file in the current directory.  --Kris
-                        if (generateLocalOutput)
+                        // I dont think enduser need any info about his tokens
+                        if (!showGenericMessage)
                         {
-                            string tokenSavedHtml;
-                            using (Stream stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("AuthTokenRetrieverLib.Templates.TokenSaved.html"))
+                            using (Stream stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("AuthTokenRetrieverLib.Templates.Success.html"))
                             {
                                 using (StreamReader streamReader = new StreamReader(stream))
                                 {
-                                    tokenSavedHtml = streamReader.ReadToEnd();
+                                    html = streamReader.ReadToEnd();
                                 }
                             }
 
-                            string fileExt = "." + appId + "." + (!string.IsNullOrWhiteSpace(appSecret) ? appSecret + "." : "") + "json";
+                            html = html.Replace("REDDIT_OAUTH_ACCESS_TOKEN", oAuthToken.AccessToken);
+                            html = html.Replace("REDDIT_OAUTH_REFRESH_TOKEN", oAuthToken.RefreshToken);
 
-                            string tokenPath = Directory.GetCurrentDirectory() + Path.DirectorySeparatorChar
-                                + "RDNOauthToken_" + DateTime.Now.ToString("yyyyMMddHHmmssffff") + fileExt;
+                            // If enabled, output the token to a JSON file in the current directory.  --Kris
+                            if (generateLocalOutput)
+                            {
+                                string tokenSavedHtml;
+                                using (Stream stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("AuthTokenRetrieverLib.Templates.TokenSaved.html"))
+                                {
+                                    using (StreamReader streamReader = new StreamReader(stream))
+                                    {
+                                        tokenSavedHtml = streamReader.ReadToEnd();
+                                    }
+                                }
 
-                            File.WriteAllText(tokenPath, JsonConvert.SerializeObject(oAuthToken));
+                                string fileExt = "." + appId + "." + (!string.IsNullOrWhiteSpace(appSecret) ? appSecret + "." : "") + "json";
 
-                            html = html.Replace("TOKEN_SAVED", tokenSavedHtml.Replace("LOCAL_TOKEN_PATH", tokenPath));
+                                string tokenPath = Directory.GetCurrentDirectory() + Path.DirectorySeparatorChar
+                                    + "RDNOauthToken_" + DateTime.Now.ToString("yyyyMMddHHmmssffff") + fileExt;
+
+                                File.WriteAllText(tokenPath, JsonConvert.SerializeObject(oAuthToken));
+
+                                html = html.Replace("TOKEN_SAVED", tokenSavedHtml.Replace("LOCAL_TOKEN_PATH", tokenPath));
+                            }
+                            else
+                            {
+                                html = html.Replace("TOKEN_SAVED", "");
+                            }
                         }
                         else
                         {
-                            html = html.Replace("TOKEN_SAVED", "");
+                            html = "<h1>Login successful!<br/>Please close browser to proceed with app.</h1>";
                         }
 
                         // Send the success page.  --Kris
                         context.Response = new uhttpsharp.HttpResponse(HttpResponseCode.Ok, Encoding.UTF8.GetBytes(html), false);
                     }
+                }
+                catch (Exception e)
+                {
+                    // if something went wrong we will not be able to get error without this try/catch, especially useful for mobile apps where console is not an option  --Alexander Romanenko
+                    OnException?.Invoke(this, new ExceptionEventArgs { Exception = e, Message = "ERROR:  Unable to process request from reddit!" });
+                    throw;
+                }
 
-                    return Task.Factory.GetCompleted();
-                });
+                return Task.CompletedTask;
+            });
 
-                HttpServer.Start();
-            }
+            HttpServer.Start();
         }
 
         public void StopListening()
         {
-            HttpServer.Dispose();
+            HttpServer?.Dispose();
         }
 
         public string AuthURL(string scope = "creddits%20modcontributors%20modmail%20modconfig%20subscribe%20structuredstyles%20vote%20wikiedit%20mysubreddits%20submit%20modlog%20modposts%20modflair%20save%20modothers%20read%20privatemessages%20report%20identity%20livemanage%20account%20modtraffic%20wikiread%20edit%20modwiki%20modself%20history%20flair")
