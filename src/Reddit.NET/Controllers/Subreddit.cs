@@ -1074,6 +1074,17 @@ namespace Reddit.Controllers
             return new Subreddit(Dispatch, Dispatch.Subreddits.About(Name));
         }
 
+        // Example:  Subreddit sub = await reddit.Subreddit("facepalm").AboutAsync();
+        // Equivalent to:  Subreddit sub = reddit.Subreddit(await reddit.Models.Subreddits.AboutAsync("facepalm"));
+        /// <summary>
+        /// Return information about the current subreddit instance.
+        /// </summary>
+        /// <returns>An instance of this class populated with the retrieved data.</returns>
+        public async Task<Subreddit> AboutAsync()
+        {
+            return new Subreddit(Dispatch, await Dispatch.Subreddits.AboutAsync(Name));
+        }
+
         /// <summary>
         /// Accept an invite to moderate the specified subreddit.
         /// The authenticated user must have been invited to moderate the subreddit by one of its current moderators.
@@ -1799,7 +1810,7 @@ namespace Reddit.Controllers
         {
             Validate(await Dispatch.Subreddits.SiteAdminAsync(subredditsSiteAdminInput, gRecaptchaResponse, headerTitle));
 
-            return About();
+            return await AboutAsync();
         }
 
         /// <summary>
@@ -1897,7 +1908,7 @@ namespace Reddit.Controllers
             }
             catch (RedditSubredditExistsException) { }
 
-            return About();
+            return await AboutAsync();
         }
 
         /// <summary>
@@ -1975,7 +1986,7 @@ namespace Reddit.Controllers
             // If subreddit already exists, import its data to this instance so we can get the fullname.  --Kris
             if (string.IsNullOrWhiteSpace(Fullname))
             {
-                Import(About(), false);
+                Import(await AboutAsync(), false);
             }
 
             return await UpdateAsync(allowPostCrossposts: allowPostCrossposts, allowTop: allowTop, excludeBannedModqueue: excludeBannedModqueue,
@@ -2028,7 +2039,7 @@ namespace Reddit.Controllers
             // If subreddit already exists, import its data to this instance so we can get the fullname.  --Kris
             if (string.IsNullOrWhiteSpace(Fullname))
             {
-                Import(About(), false);
+                Import(await AboutAsync(), false);
             }
 
             return await UpdateAsync(subredditsSiteAdminInput, gRecaptchaResponse, headerTitle);

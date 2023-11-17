@@ -1,28 +1,17 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
-
+    <TargetFramework>net6.0</TargetFramework>
     <IsPackable>false</IsPackable>
-
     <Version>1.5.2</Version>
-
     <Authors>Kris Craig</Authors>
-
     <Copyright>Copyright (C) 2022 by Kris Craig</Copyright>
-
     <PackageProjectUrl>https://github.com/sirkris/Reddit.NET</PackageProjectUrl>
-
     <RepositoryUrl>https://github.com/sirkris/Reddit.NET</RepositoryUrl>
-
     <RepositoryType>Git</RepositoryType>
-
     <AssemblyVersion>1.5.2.0</AssemblyVersion>
-
     <FileVersion>1.5.2.0</FileVersion>
-
     <PackageReleaseNotes>https://github.com/sirkris/Reddit.NET/blob/master/README.md</PackageReleaseNotes>
-
     <PackageTags>reddit web utility http api oauth rest json netstandard</PackageTags>
   </PropertyGroup>
 

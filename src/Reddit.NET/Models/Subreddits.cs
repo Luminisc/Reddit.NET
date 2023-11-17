@@ -29,6 +29,18 @@ namespace Reddit.Models
         }
 
         /// <summary>
+        /// This endpoint is a listing.
+        /// </summary>
+        /// <param name="where">One of (banned, muted, wikibanned, contributors, wikicontributors, moderators)</param>
+        /// <param name="subredditsAboutInput">A valid SubredditsAboutInput instance</param>
+        /// <param name="subreddit">The subreddit being queried</param>
+        /// <returns>An object containing the requested data.</returns>
+        public async Task<DynamicShortListingContainer> AboutAsync(string where, SubredditsAboutInput subredditsAboutInput, string subreddit = null)
+        {
+            return await SendRequestAsync<DynamicShortListingContainer>(Sr(subreddit) + "about/" + where, subredditsAboutInput);
+        }
+
+        /// <summary>
         /// Return information about the subreddit.
         /// Data includes the subscriber count, description, and header image.
         /// </summary>
@@ -37,6 +49,17 @@ namespace Reddit.Models
         public SubredditChild About(string subreddit)
         {
             return JsonConvert.DeserializeObject<SubredditChild>(ExecuteRequest("r/" + subreddit + "/about"));
+        }
+
+        /// <summary>
+        /// Return information about the subreddit.
+        /// Data includes the subscriber count, description, and header image.
+        /// </summary>
+        /// <param name="subreddit">The subreddit being queried</param>
+        /// <returns>A subreddit listing.</returns>
+        public async Task<SubredditChild> AboutAsync(string subreddit)
+        {
+            return JsonConvert.DeserializeObject<SubredditChild>(await ExecuteRequestAsync("r/" + subreddit + "/about"));
         }
 
         /// <summary>
@@ -595,6 +618,21 @@ namespace Reddit.Models
         public SubredditContainer GetUserSubreddits(string where, CategorizedSrListingInput categorizedSrListingInput)
         {
             return SendRequest<SubredditContainer>("users/" + where, categorizedSrListingInput);
+        }
+
+        /// <summary>
+        /// Get all user subreddits.
+        /// The where parameter chooses the order in which the subreddits are displayed.
+        /// popular sorts on the activity of the subreddit and the position of the subreddits can shift around.
+        /// new sorts the user subreddits based on their creation date, newest first.
+        /// This endpoint is a listing.
+        /// </summary>
+        /// <param name="where">One of (popular, new)</param>
+        /// <param name="categorizedSrListingInput">A valid CategorizedSrListingInput instance</param>
+        /// <returns>List of subreddit objects.</returns>
+        public async Task<SubredditContainer> GetUserSubredditsAsync(string where, CategorizedSrListingInput categorizedSrListingInput)
+        {
+            return await SendRequestAsync<SubredditContainer>("users/" + where, categorizedSrListingInput);
         }
     }
 }

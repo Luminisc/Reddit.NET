@@ -4,6 +4,7 @@ using Reddit.Inputs;
 using Reddit.Inputs.Subreddits;
 using Reddit.Things;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace RedditTests.ModelTests
 {
@@ -13,15 +14,15 @@ namespace RedditTests.ModelTests
         public SubredditsTests() : base() { }
 
         [TestMethod]
-        public void About()
+        public async Task About()
         {
-            SubredditChild about = reddit.Models.Subreddits.About("WayOfTheMueller");
-            DynamicShortListingContainer aboutBanned = reddit.Models.Subreddits.About("banned", new SubredditsAboutInput(), "StillSandersForPres");
-            DynamicShortListingContainer aboutMuted = reddit.Models.Subreddits.About("muted", new SubredditsAboutInput(), "StillSandersForPres");
-            DynamicShortListingContainer aboutWikiBanned = reddit.Models.Subreddits.About("wikibanned", new SubredditsAboutInput(), "StillSandersForPres");
-            DynamicShortListingContainer aboutContributors = reddit.Models.Subreddits.About("contributors", new SubredditsAboutInput(), "StillSandersForPres");
-            DynamicShortListingContainer aboutWikiContributors = reddit.Models.Subreddits.About("wikicontributors", new SubredditsAboutInput(), "StillSandersForPres");
-            DynamicShortListingContainer aboutModerators = reddit.Models.Subreddits.About("moderators", new SubredditsAboutInput(), "StillSandersForPres");
+            SubredditChild about = await reddit.Models.Subreddits.AboutAsync("WayOfTheMueller");
+            DynamicShortListingContainer aboutBanned = await reddit.Models.Subreddits.AboutAsync("banned", new SubredditsAboutInput(), "StillSandersForPres");
+            DynamicShortListingContainer aboutMuted = await reddit.Models.Subreddits.AboutAsync("muted", new SubredditsAboutInput(), "StillSandersForPres");
+            DynamicShortListingContainer aboutWikiBanned = await reddit.Models.Subreddits.AboutAsync("wikibanned", new SubredditsAboutInput(), "StillSandersForPres");
+            DynamicShortListingContainer aboutContributors = await reddit.Models.Subreddits.AboutAsync("contributors", new SubredditsAboutInput(), "StillSandersForPres");
+            DynamicShortListingContainer aboutWikiContributors = await reddit.Models.Subreddits.AboutAsync("wikicontributors", new SubredditsAboutInput(), "StillSandersForPres");
+            DynamicShortListingContainer aboutModerators = await reddit.Models.Subreddits.AboutAsync("moderators", new SubredditsAboutInput(), "StillSandersForPres");
             
             Assert.IsNotNull(about);
             Assert.IsTrue(about.Data.DisplayName.Equals("WayOfTheMueller"));
@@ -108,10 +109,10 @@ namespace RedditTests.ModelTests
         }
 
         [TestMethod]
-        public void GetUserSubreddits()
+        public async Task GetUserSubreddits()
         {
-            SubredditContainer popularUserSubs = reddit.Models.Subreddits.GetUserSubreddits("popular", new CategorizedSrListingInput());
-            SubredditContainer newUserSubs = reddit.Models.Subreddits.GetUserSubreddits("new", new CategorizedSrListingInput());
+            var popularUserSubs = await reddit.Models.Subreddits.GetUserSubredditsAsync("popular", new CategorizedSrListingInput());
+            var newUserSubs = await reddit.Models.Subreddits.GetUserSubredditsAsync("new", new CategorizedSrListingInput());
 
             Assert.IsNotNull(popularUserSubs);
             Assert.IsNotNull(newUserSubs);
